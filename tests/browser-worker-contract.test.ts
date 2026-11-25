@@ -2433,23 +2433,42 @@ test.each(["visible", "missing", "page closed"])("image attachment readiness che
       return true;
     },
   };
+  const expectedFile = "codex-input-image-1.png";
+  function assertFilePattern(name: RegExp) {
+    expect(name).toBeInstanceOf(RegExp);
+    for (const matching of [expectedFile, "codex-input-image-1(20261124-215438).png", "codex-input-image-1 (2).png"]) {
+      expect(name.test(matching)).toBeTrue();
+    }
+    for (const unrelated of ["codex-input-image-10.png", "codex-input-image-2.png", "codex-input-image-1(other).png", "codex-input-image-1.jpg", "other-codex-input-image-1.png"]) {
+      expect(name.test(unrelated)).toBeFalse();
+    }
+  }
+  const tile = {
+    and() { return this; },
+    or() { return this; },
+    filter(options: { visible: boolean }) {
+      expect(options).toEqual({ visible: true });
+      return this;
+    },
+    waitFor: async (state: { state: string; timeout: number }) => {
+      expect(state).toMatchObject({ state: "visible", timeout: 60_000 });
+      calls.push(["fileTile", expectedFile]);
+      if (outcome === "missing") throw Object.assign(new Error("private file locator"), { name: "TimeoutError" });
+      if (outcome === "page closed") throw new Error("Target page has been closed");
+    },
+  };
   const composerForm = {
-    getByRole: (role: string, options: { name: string; exact: boolean }) => {
-      expect(role).toBe("group");
-      expect(options).toEqual({ name: "codex-input-image-1.png", exact: true });
-      return {
-        or() { return this; },
-        filter() { return this; },
-        waitFor: async (state: { state: string; timeout: number }) => {
-          expect(state).toMatchObject({ state: "visible", timeout: 60_000 });
-          calls.push(["fileTile", options.name]);
-          if (outcome === "missing") throw Object.assign(new Error("private file locator"), { name: "TimeoutError" });
-          if (outcome === "page closed") throw new Error("Target page has been closed");
-        },
-      };
+    getByRole: (role: string, options: { name: RegExp }) => {
+      expect(["group", "button"]).toContain(role);
+      assertFilePattern(options.name);
+      return tile;
+    },
+    getByAltText: (name: RegExp) => {
+      assertFilePattern(name);
+      return tile;
     },
     locator: (selector: string) => {
-      if (selector.startsWith(".composer-attachment-surface") || selector.startsWith("[data-composer-attachments]")) return {};
+      if (selector === ":not([inert]):not([inert] *)" || selector.startsWith(".composer-attachment-surface") || selector.startsWith("[data-composer-attachments]")) return tile;
       if (selector === 'input[data-testid="upload-photos-input"], input[type="file"][multiple]:not([accept])') return input;
       expect(selector).toBe(CHATGPT_SEND_BUTTON_SELECTOR);
       return send;
