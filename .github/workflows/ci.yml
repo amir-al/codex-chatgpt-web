@@ -58,7 +58,8 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          export CHATGPT_DOM_TEST_BROWSER="$(bun -e 'import { chromium } from "playwright-core"; console.log(chromium.executablePath())')"
+          CHATGPT_DOM_TEST_BROWSER="$(bun -e 'import { chromium } from "playwright-core"; console.log(chromium.executablePath())')"
+          export CHATGPT_DOM_TEST_BROWSER
           test -x "$CHATGPT_DOM_TEST_BROWSER"
           bun test tests/chatgpt-model-family-browser.test.ts
       - run: bun run verify
